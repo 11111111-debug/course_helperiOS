@@ -714,6 +714,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _usernameController,
                     keyboardType: TextInputType.number,
                     autofocus: true,
+                    autofillHints: [AutofillHints.username, AutofillHints.telephoneNumber],
                     decoration: InputDecoration(
                       labelText: '账号',
                       hintText: PlatformManager().isChaoxing ? '手机号/超星号' : '手机号/邮箱',
@@ -742,6 +743,7 @@ class _LoginPageState extends State<LoginPage> {
                       ? TextFormField(
                     controller: _passwordController,
                     obscureText: !_showPassword,
+                    autofillHints: [AutofillHints.password],
                     decoration: InputDecoration(
                       labelText: '密码',
                       border: OutlineInputBorder(
