@@ -7,6 +7,7 @@ import '../models/user.dart';
 import '../session/account.dart';
 import '../utils/encrypt.dart';
 import '../platform.dart';
+import '../utils/logger.dart';
 
 /// 登录成功处理
 Future<bool> handleLoginSuccess(BuildContext context) async {
@@ -99,7 +100,7 @@ class QRCodeLoginState {
       }
       return false;
     } catch (e) {
-      debugPrint('初始化二维码失败: $e');
+      logger.e('初始化二维码失败: $e');
       return false;
     }
   }
@@ -133,7 +134,7 @@ class QRCodeLoginState {
           if (!isLoginActive || qrToken == null) return;
         }
       } catch (e) {
-        debugPrint('轮询失败: $e');
+        logger.e('轮询失败: $e');
       }
       
       // 如果不是活跃状态则退出
@@ -162,7 +163,7 @@ class QRCodeLoginState {
           }
         }
       } catch (e) {
-        debugPrint('轮询失败: $e');
+        logger.e('轮询失败: $e');
       }
     });
   }
@@ -182,7 +183,7 @@ class QRCodeLoginState {
         _updateQRInfo(qrData);
       }
     } catch (e) {
-      debugPrint('刷新二维码失败: $e');
+      logger.e('刷新二维码失败: $e');
     } finally {
       isRefreshing = false;
       isLoading = false;

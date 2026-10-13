@@ -11,6 +11,7 @@ import './session/cookie.dart';
 import './session/account.dart';
 import './platform.dart';
 import './utils/storage.dart';
+import './utils/logger.dart';
 import 'push/easemob.dart';
 import 'push/update.dart';
 
@@ -22,6 +23,12 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await initLogger();
+
+  FlutterError.onError = (details) {
+    logger.e('FlutterError', error: details.exception, stackTrace: details.stack);
+  };
 
   await StorageManager.initialize();
 

@@ -11,6 +11,7 @@ import '../../../api/quiz.dart';
 import '../../../api/image.dart';
 import '../../../models/user.dart';
 import '../../../models/active.dart';
+import '../../../utils/logger.dart';
 import '../widget/accounts_selector.dart';
 
 class QuizPage extends StatefulWidget {
@@ -813,7 +814,7 @@ class _QuizPageState extends State<QuizPage> {
         }
       }
     } catch (e) {
-      debugPrint('提取图片URL失败: $e');
+      logger.e('提取图片URL失败: $e');
     }
     return urls;
   }

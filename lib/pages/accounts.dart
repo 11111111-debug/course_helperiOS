@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../session/account.dart';
 import '../models/user.dart';
 import '../platform.dart';
+import '../utils/logger.dart';
 import '../push/easemob.dart';
 import '../push/update.dart';
 import 'widget/avatar.dart';
@@ -394,7 +395,12 @@ class _AccountsPageState extends State<AccountsPage> with TickerProviderStateMix
                     TextButton.icon(
                       onPressed: () async {
                         Navigator.of(dialogContext).pop();
-                        // log
+                        final success = await exportLog();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? '日志已分享' : '日志分享失败')),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.file_upload_outlined, size: 18),
                       label: const Text('导出日志'),
