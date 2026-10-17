@@ -472,6 +472,16 @@ class _PresentationPageState extends State<PresentationPage> {
             }
           }
           break;
+
+        case 'locationcheckinext':
+          // 位置签到开始
+          _handleLocationCheckInStart(data);
+          break;
+
+        case 'locationcheckinend':
+          // 位置签到结束
+          _handleLocationCheckInEnd(data);
+          break;
       }
     } catch (e) {
       logger.e('解析消息失败：$e');
@@ -525,7 +535,12 @@ class _PresentationPageState extends State<PresentationPage> {
         });
       }
     }
-    
+
+    _scrollTimelineToBottom();
+  }
+
+  /// 时间线滚动到底部
+  void _scrollTimelineToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -535,6 +550,159 @@ class _PresentationPageState extends State<PresentationPage> {
         );
       }
     });
+  }
+
+  Future<void> _handleLocationCheckInStart(Map<String, dynamic> data) async {
+    /// FIXME 需要根据实际参数进行调整
+    final lessonId = widget.lessonId;
+    final startMs = data['startMs'] ?? data['serverTime'];
+    final timestamp = startMs is int
+        ? DateTime.fromMillisecondsSinceEpoch(startMs)
+        : DateTime.now();
+
+    final event = TimelineEvent(
+      type: 'locationcheckin_start',
+      code: null,
+      title: '位置签到开始',
+      timestamp: timestamp,
+      subtitle: '签到中...'
+    );
+    setState(() {
+      _timeline.add(event);
+    });
+    _scrollTimelineToBottom();
+
+    // 查询所有账号签到状态
+    final allAccounts = AccountManager.allAccounts;
+    final getResults = await ApiService.sendForEachUser(
+      allAccounts,
+      (user) async {
+        final api = RCCourseApi(user);
+        return await api.getCheckIn();
+      },
+    );
+
+    final getCheckInTexts = <String>[];
+    final submitTexts = <String>[];
+    int signedCount = 0;
+
+    for (int i = 0; i < getResults.length; i++) {
+      final result = getResults[i];
+      final user = allAccounts[i];
+      getCheckInTexts.add('=== ${user.name} ===\n${const JsonEncoder.withIndent('  ').convert(result)}');
+
+      if (result == null) continue;
+      if (result['signed'] == true) {
+        signedCount++;
+        continue;
+      }
+
+      // 使用返回的位置信息自动签到
+      final session = result['session'];
+      final sessionMap = session is Map<String, dynamic> ? session : null;
+      final lat = (sessionMap?['centerLat'] as num?)?.toDouble()
+          ?? (result['lat'] as num?)?.toDouble()
+          ?? (data['centerLat'] as num?)?.toDouble();
+      final lng = (sessionMap?['centerLng'] as num?)?.toDouble()
+          ?? (result['lng'] as num?)?.toDouble()
+          ?? (data['centerLng'] as num?)?.toDouble();
+      if (lat == null || lng == null) continue;
+
+      final address = (result['address'] as String?) ?? '';
+      final api = RCCourseApi(user);
+      final submitResult = await api.submitLocationCheckIn(lessonId, lat, lng, address);
+      submitTexts.add('${user.name}\n${const JsonEncoder.withIndent('  ').convert(submitResult)}');
+
+      if (submitResult != null && submitResult['code'] == 0) {
+        signedCount++;
+      }
+    }
+
+    // debug
+    if (mounted) {
+      _showDebugDataDialog(
+        'getCheckIn 返回',
+        getCheckInTexts.isEmpty ? '无账号' : getCheckInTexts.join('\n\n'),
+      );
+      if (submitTexts.isNotEmpty) {
+        _showDebugDataDialog('submitLocationCheckIn 返回', submitTexts.join('\n\n'));
+      }
+    }
+
+    // 更新时间线签到状态
+    final total = allAccounts.length;
+    String subtitle;
+    if (total == 0) {
+      subtitle = '无账号';
+    } else if (signedCount >= total) {
+      subtitle = '已签到 ($signedCount/$total)';
+    } else if (signedCount > 0) {
+      subtitle = '部分已签到 $signedCount/$total';
+    } else {
+      subtitle = '未签到';
+    }
+    if (mounted) {
+      setState(() {
+        event.subtitle = subtitle;
+      });
+    }
+  }
+
+  /// 处理位置签到结束
+  void _handleLocationCheckInEnd(Map<String, dynamic> data) {
+    final endMs = data['endedAt'] ?? data['endMs'] ?? data['serverTime'];
+    final timestamp = endMs is int
+        ? DateTime.fromMillisecondsSinceEpoch(endMs)
+        : DateTime.now();
+
+    setState(() {
+      _timeline.add(TimelineEvent(
+        type: 'locationcheckin_end',
+        code: null,
+        title: '位置签到结束',
+        timestamp: timestamp
+      ));
+    });
+    _scrollTimelineToBottom();
+  }
+
+  void _showDebugDataDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              content,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('关闭'),
+          ),
+          IconButton(
+            tooltip: '复制',
+            icon: const Icon(Icons.copy, size: 20),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: content));
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('已复制'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadPresentation(String presentationId) async {
@@ -1088,6 +1256,14 @@ class _PresentationPageState extends State<PresentationPage> {
         bgColor = Colors.orange;
         icon = Icons.person_add;
         break;
+      case 'locationcheckin_start':
+        bgColor = Colors.teal;
+        icon = Icons.location_on;
+        break;
+      case 'locationcheckin_end':
+        bgColor = Colors.blueGrey;
+        icon = Icons.location_off;
+        break;
       default:
         bgColor = Colors.grey;
         icon = Icons.info;
@@ -1158,6 +1334,17 @@ class _PresentationPageState extends State<PresentationPage> {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (event.subtitle != null && event.subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        event.subtitle!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: _getSubtitleColor(event.subtitle!),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1181,6 +1368,15 @@ class _PresentationPageState extends State<PresentationPage> {
       default:
         return event.title ?? '';
     }
+  }
+
+  Color _getSubtitleColor(String subtitle) {
+    if (subtitle.startsWith('已签到')) return Colors.green;
+    if (subtitle.startsWith('部分')) return Colors.orange;
+    if (subtitle.startsWith('签到中')) {
+      return Theme.of(context).colorScheme.onSurfaceVariant;
+    }
+    return Theme.of(context).colorScheme.error;
   }
 
   String _formatTime(DateTime time) {
@@ -1773,6 +1969,7 @@ class TimelineEvent {
   final int? total;
   final int? limit;
   final DateTime timestamp;
+  String? subtitle;
   // problem
   final String? problemId;
   final String? presentationId;
@@ -1786,6 +1983,7 @@ class TimelineEvent {
     this.total,
     this.limit,
     required this.timestamp,
+    this.subtitle,
     this.problemId,
     this.presentationId,
     this.problemDt,
