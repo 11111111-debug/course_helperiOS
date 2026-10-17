@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show WebSocket, File;
@@ -15,6 +16,7 @@ import '../models/presentation.dart';
 import '../session/account.dart';
 import '../platform.dart';
 import '../utils/logger.dart';
+import '../utils/storage.dart';
 
 @pragma('vm:entry-point')
 void _startForegroundCallback() {
@@ -174,23 +176,42 @@ class _PresentationPageState extends State<PresentationPage> {
 
   Future<void> _startForegroundService() async {
     // 请求忽略电池优化
-    if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
-      await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+    final pref = StorageManager.prefs;
+    // 对于各个厂商的定制系统 无法获取到电池优化的状态
+    final bool isBatteryOptimizationDisabled = pref.getBool('isBatteryOptimizationDisabled') ?? false;
+
+    if (!isBatteryOptimizationDisabled) {
+      bool? isAllDisabled = await DisableBatteryOptimization.isAllBatteryOptimizationDisabled;
+
+      if (isAllDisabled != null && !isAllDisabled) {
+        // 引导用户完成手机厂商的设置（自启动和电池优化）
+        await DisableBatteryOptimization.showDisableAllOptimizationsSettings(
+            "开启自启动",
+            "请按步骤开启自启动，否则课程在后台会断开连接",
+            "检测到系统有额外的电池优化",
+            "请按步骤关闭额外的电池优化，以保证连接稳定"
+        );
+      } else {
+        if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
+          await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+        }
+      }
+      pref.setBool('isBatteryOptimizationDisabled', true);
     }
 
     // 初始化前台服务
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'websocket_service',
-        channelName: 'WebSocket Background Service',
-        channelDescription: 'Keep WebSocket connection alive'
+          channelId: 'websocket_service',
+          channelName: 'WebSocket Background Service',
+          channelDescription: 'Keep WebSocket connection alive'
       ),
       iosNotificationOptions: const IOSNotificationOptions(
-        showNotification: false
+          showNotification: false
       ),
       foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(5000),
-        allowWifiLock: true
+          eventAction: ForegroundTaskEventAction.repeat(5000),
+          allowWifiLock: true
       ),
     );
 
