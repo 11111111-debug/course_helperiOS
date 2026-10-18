@@ -17,6 +17,7 @@ import '../session/account.dart';
 import '../platform.dart';
 import '../utils/logger.dart';
 import '../utils/storage.dart';
+import '../utils/time.dart';
 
 @pragma('vm:entry-point')
 void _startForegroundCallback() {
@@ -1328,7 +1329,7 @@ class _PresentationPageState extends State<PresentationPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _formatTime(event.timestamp),
+                      formatRelativeTime(event.timestamp),
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1377,21 +1378,6 @@ class _PresentationPageState extends State<PresentationPage> {
       return Theme.of(context).colorScheme.onSurfaceVariant;
     }
     return Theme.of(context).colorScheme.error;
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
-    
-    if (diff.inMinutes < 1) {
-      return '刚刚';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}分钟前';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}小时前';
-    } else {
-      return '${time.month}/${time.day} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    }
   }
 
   String _getProblemTypeLabel(int type) {
