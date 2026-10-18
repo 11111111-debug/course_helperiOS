@@ -20,6 +20,7 @@ import '../actives/vote.dart';
 import '../actives/questionnaire.dart';
 import 'content.dart';
 import '../presentation.dart';
+import '../push/groups.dart';
 
 
 class CoursesPage extends StatefulWidget {
@@ -496,6 +497,19 @@ class _CoursesPageState extends State<CoursesPage> with WidgetsBindingObserver {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
+          if (PlatformManager().isChaoxing)
+            IconButton(
+              icon: const Icon(Icons.group),
+              tooltip: '群聊',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GroupsPage(),
+                  ),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             onPressed: () {
