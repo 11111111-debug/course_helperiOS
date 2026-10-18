@@ -244,8 +244,7 @@ class _GroupMessagesPageState extends State<GroupMessagesPage> {
       const maxPages = 20;
 
       do {
-        final result = await ChatClient.getInstance.chatManager
-            .fetchHistoryMessagesByOption(
+        final result = await ChatClient.getInstance.chatManager.fetchHistoryMessagesByOption(
           groupId,
           ChatConversationType.GroupChat,
           cursor: cursor,
@@ -359,12 +358,6 @@ class _GroupMessagesPageState extends State<GroupMessagesPage> {
     return int.tryParse(value?.toString() ?? '');
   }
 
-  String _formatTime(int timestamp) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final title = widget.group.groupName ?? '群聊消息';
@@ -399,18 +392,13 @@ class _GroupMessagesPageState extends State<GroupMessagesPage> {
                           _courseInfoOf(message);
 
                       return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .secondaryContainer,
+                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
                             child: Icon(
                               active.getIcon(),
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
                             ),
                           ),
                           title: Text(
@@ -447,13 +435,6 @@ class _GroupMessagesPageState extends State<GroupMessagesPage> {
                                 ),
                             ],
                           ),
-                          trailing: Text(
-                            _formatTime(message.serverTime),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
                           onTap: () async {
                             if (!mounted) return;
                             CoursesPage.navigateToActive(
@@ -463,7 +444,7 @@ class _GroupMessagesPageState extends State<GroupMessagesPage> {
                               classId,
                               ''
                             );
-                          },
+                          }
                         ),
                       );
                     },
