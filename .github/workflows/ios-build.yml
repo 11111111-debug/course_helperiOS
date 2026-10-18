@@ -1,0 +1,41 @@
+
+name: iOS 构建 IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: 构建 iOS 应用
+    runs-on: macos-latest
+
+    steps:
+      - name: 下载源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 获取项目依赖
+        run: flutter pub get
+
+      - name: 编译 iOS 应用
+        run: flutter build ios --release --no-codesign
+
+      - name: 打包 IPA
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qr CourseHelper.ipa Payload
+
+      - name: 上传 IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: CourseHelper-iOS-IPA
+          path: build/ios/ipa/CourseHelper.ipa
+          if-no-files-found: error
+          retention-days: 7
